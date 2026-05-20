@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "nombre": "NVIDIA GeForce RTX 4070 Ti",
+    "descripcion": "Tarjeta gráfica de alto rendimiento, ideal para gaming en 4K, modelado 3D y edición de video profesional.",
+    "precio": 850.00,
+    "stock": 3,
+    "categoria": "GPU",
+    "especificacion_clave": "Requiere fuente mínima de 750W"
+  },
+  {
+    "id": 2,
+    "nombre": "Procesador Intel Core i9-14900K",
+    "descripcion": "CPU de 24 núcleos para multitarea extrema y ensambles de gama entusiasta.",
+    "precio": 599.00,
+    "stock": 5,
+    "categoria": "CPU",
+    "especificacion_clave": "Socket LGA 1700"
+  },
+  {
+    "id": 3,
+    "nombre": "Fuente de Poder Corsair RM850x",
+    "descripcion": "Fuente de alimentación de 850W con certificación 80 Plus Gold, totalmente modular.",
+    "precio": 140.00,
+    "stock": 12,
+    "categoria": "Fuente de Poder",
+    "especificacion_clave": "850W"
+  },
+  {
+    "id": 4,
+    "nombre": "Memoria RAM Corsair Vengeance 32GB (2x16GB)",
+    "descripcion": "Memoria DDR5 a 6000MHz, optimizada para las últimas placas base.",
+    "precio": 115.00,
+    "stock": 8,
+    "categoria": "RAM",
+    "especificacion_clave": "DDR5"
+  },
+  {
+    "id": 5,
+    "nombre": "Monitor LG UltraGear 27''",
+    "descripcion": "Monitor gaming con panel Nano IPS, resolución QHD (1440p) y tasa de refresco de 165Hz.",
+    "precio": 350.00,
+    "stock": 0,
+    "categoria": "Monitor",
+    "especificacion_clave": "1440p 165Hz"
+  }
+]
