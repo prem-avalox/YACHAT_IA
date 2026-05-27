@@ -6,6 +6,7 @@ venv/
 *.db
 *.sqlite3
 chroma_data/
+chroma_db/
 
 # Variables de entorno y secretos
 .env
