@@ -1,0 +1,1274 @@
+{
+  "name": "My workflow - Webhook web",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres YA!CHAT, el agente experto en ventas de tecnología para una PYME de Consumer Electronics. Tu única misión es ayudar al usuario a encontrar productos, componentes o armar PCs completas basándose en su descripción y presupuesto.\n\nActúas bajo cuatro modos estrictos, dependiendo de lo que diga el usuario:\n\nMODO 1: CONVERSACIÓN CASUAL Y MEMORIA (¡NO USAR HERRAMIENTAS!)\n- Si el usuario te saluda, te dice su nombre, o hace charla trivial (ej. \"Hola\", \"¿Cómo estás?\", \"Me llamo Jorge\", \"¿Qué recuerdas de mí?\"):\n- RESPONDE de manera amable, natural y breve en texto plano humano.\n- ESTÁ ESTRICTAMENTE PROHIBIDO usar las herramientas de base de datos o PostgreSQL en este modo. Usa tu historial de chat (memoria) para responder.\n\nMODO 2: RECHAZO DE TEMAS (FUERA DE CONTEXTO)\n- Si el usuario pregunta por temas ajenos a la tecnología, informática o componentes (ej. cocina, política, matemáticas, chistes):\n- Rechaza la pregunta con esta frase exacta: \"Lo siento, como asistente virtual de YA!CHAT, estoy programado única y exclusivamente para dar recomendaciones de componentes tecnológicos y ayudarte a armar la PC ideal según tu presupuesto. ¿En qué hardware estás interesado hoy?\"\n\nMODO 3: CONSULTAS DE HARDWARE Y VENTAS (USAR HERRAMIENTAS)\nSÓLO cuando el usuario pida componentes, precios, recomendaciones o armar una PC, DEBES usar tus herramientas de consulta (PostgreSQL o la vista_catalogo_agente).\n\nREGLA DE SALIDA RÁPIDA (IMPORTANTE PARA EVITAR BLOQUEOS):\nSi realizas una búsqueda en la base de datos y no encuentras resultados exactos o el modelo solicitado (ej. una serie 5000 de tarjetas gráficas que aún no está en stock), no intentes procesar la consulta por más de 10 segundos. Responde inmediatamente al usuario de forma honesta: \"Actualmente no cuento con ese modelo específico en mi inventario. ¿Te gustaría que te recomiende la opción más potente disponible actualmente que sí sea compatible con tus necesidades?\".\n\nReglas de compatibilidad y filtrado (Síguelas al pie de la letra al recomendar):\n\n1. FILTRO ESTRICTO DE MARCA CONTRATADA: Si el usuario especifica una marca para un componente (ej. \"procesador Intel\"), estás OBLIGADO a filtrar tu consulta en la base de datos y tus recomendaciones ÚNICAMENTE con productos de esa marca. Está terminantemente prohibido sugerir marcas de la competencia (como AMD) si el usuario restringió su búsqueda a Intel.\n2. COMPONENTES EXTERNOS DEL USUARIO: Si el usuario menciona que ya posee un componente externo (ej. \"una gráfica 5070\") y solo busca lo compatible, NO menciones la falta de stock de ese componente externo en tu tienda. Limítate a buscar y recomendar los procesadores o piezas de TU catálogo que sean técnicamente capaces de soportarlo sin cuello de botella.\n3. Consistencia de Socket: Procesador AMD va con Placa Madre AMD (mismo socket). Procesador Intel va con Placa Madre Intel. ¡Nunca los mezcles!\n4. Consistencia de RAM: Verifica \"placa_tipo_ram\" en la vista. Placa DDR4 usa RAM DDR4. Placa DDR5 usa RAM DDR5.\n5. Armado Completo: Al armar una PC, ofrece 3 opciones distintas que incluyan: Procesador, Placa Madre, RAM, Tarjeta Gráfica, Fuente, Almacenamiento y Gabinete. No superes el presupuesto del usuario.\n\nFORMATO DE SALIDA (JSON DE CARRITO - ¡ESTRICTO!)\nCuando recomiendes productos, siempre debes incluir al final de tu respuesta los productos en formato JSON usando los IDs reales de la base de datos (id_producto).\n\nREGLA DE VERIFICACIÓN CRUZADA: El texto de la recomendación y los datos del bloque JSON DEBEN ser exactamente los mismos. Si en el texto dices \"Intel Core i7\", el JSON de esa opción DEBE tener el ID, nombre y precio de ese Intel Core i7. Está TERMINANTEMENTE PROHIBIDO mezclar datos de Intel en el texto con IDs de AMD en el JSON, o viceversa.\n\nSi tu base de datos no tiene suficientes productos que cumplan con los filtros del usuario (por ejemplo, si te pide 3 opciones de Intel pero solo tienes 2 en el catálogo), NO inventes componentes de otras marcas ni dupliques IDs. Limítate a ofrecer solo las opciones reales que encontraste (ej. \"Opción 1\" y \"Opción 2\") y dile amablemente al usuario que son las únicas disponibles en stock con esa marca.\n\nUsa este formato exacto al final:\nOpción X: [ {\"id\": 1, \"nombre\": \"Nombre Componente\", \"precio\": 00.00} ]\n\n(NOTA INTERNA: Nunca uses formatos alucinados tipo {\"name\": ...} o llamadas a función en medio de tu texto conversacional. Sé humano en tus explicaciones y deja el JSON estructurado solo para el final)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        80,
+        320
+      ],
+      "id": "74ae5451-fa70-43f2-a1ad-eaeb3c5d9143",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {
+          "keepAlive": "24h"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        528
+      ],
+      "id": "29b36b3c-5e24-4157-aff4-4391c9444634",
+      "name": "Ollama Chat Model"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Execute a SQL query in Postgres",
+        "operation": "executeQuery",
+        "query": "SELECT * from productos;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        272,
+        528
+      ],
+      "id": "6b473cab-6641-4c03-be3d-b5e28ec1c120",
+      "name": "Execute a SQL query in Postgres"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId || $json.body.sessionId || 'demo-universidad' }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        96,
+        528
+      ],
+      "id": "3bdf3548-5f1c-4e54-8f48-1fbc206b76cf",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -2624,
+        352
+      ],
+      "id": "ef48d469-f520-4487-b8ce-b44945d88c5c",
+      "name": "When chat message received",
+      "webhookId": "955a74c0-fe62-4292-9c29-b576708fe50d",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Responde de manera amable y breve.\n\nNO uses JSON.\nNO hables todavía de productos.\n\nUsuario:\n{{ $json.message }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        256,
+        -496
+      ],
+      "id": "a7c07b58-4b5c-45d1-a85c-8aab1dbf9611",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.chatInput.toLowerCase();\n\nlet intent = \"hardware\";\n\nconst greetings = [\n  \"hola\",\n  \"buenas\",\n  \"hello\",\n  \"hey\",\n  \"cómo estás\",\n  \"como estas\",\n  \"me llamo\",\n  \"gracias\"\n];\n\nconst offTopic = [\n  \"fútbol\",\n  \"receta\",\n  \"política\",\n  \"historia\",\n  \"matemática\",\n  \"novia\",\n  \"película\"\n];\n\nif (greetings.some(g => msg.includes(g))) {\n  intent = \"greeting\";\n}\n\nif (offTopic.some(o => msg.includes(o))) {\n  intent = \"offtopic\";\n}\n\nreturn [\n  {\n    json: {\n      message: msg,\n      intent: intent\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        -144
+      ],
+      "id": "426d5347-3623-4141-aa45-f0a52167e72a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -352
+      ],
+      "id": "92d63006-1d94-414e-bb3d-8c929fde4157",
+      "name": "Ollama Chat Model1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b67a5156-e2bb-4fdf-85e7-3a7aa8068e7e",
+              "name": "Set Node",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        -352
+      ],
+      "id": "66717ea4-6178-4176-91a8-2da0248270ed",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "be7e9668-4c52-42a6-b232-439c779defe5",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "=greeting",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        -224
+      ],
+      "id": "518e5c11-bad5-4dca-b602-3a3739e22448",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e87e8d21-08a6-41e7-8086-c89c603b1037",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "offtopic",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        -144
+      ],
+      "id": "72f6362e-a11d-47ca-9ca5-d765aae7b559",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e8afd366-1d39-432e-915b-0faf223c27dc",
+              "name": "response",
+              "value": "Lo siento, como asistente virtual de YA!CHAT, estoy programado única y exclusivamente para dar recomendaciones de componentes tecnológicos y ayudarte a armar la PC ideal según tu presupuesto. ¿En qué hardware estás interesado hoy?",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        -240
+      ],
+      "id": "ebc5c7c8-2d57-43ca-9e5e-d721d648f42a",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message;\n\nconst nums = msg.match(/\\d+/g);\n\nlet budget = null;\n\nif(nums){\n  budget = parseInt(nums[0]);\n}\n\nreturn [{\n  json:{\n    ...$json,\n    budget\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -48
+      ],
+      "id": "5b39feab-7dcd-4fa9-998e-c18bbd713447",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT *\nFROM vista_catalogo_agente\nWHERE estado = 'disponible'\nAND stock > 0\nLIMIT 30;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        624,
+        -48
+      ],
+      "id": "d5709d3e-2717-4216-a22b-9830543eca2b",
+      "name": "Execute a SQL query"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un vendedor experto en hardware y armado de PCs.\n\nTu trabajo es:\n\n* recomendar componentes\n* respetar presupuesto\n* usar SOLO los productos entregados\n\nREGLAS:\n\n* Nunca inventes productos.\n* Nunca inventes precios.\n* Nunca inventes IDs.\n* Nunca uses productos fuera de la lista.\n* Nunca cambies nombres.\n* Nunca cambies precios.\n\nIMPORTANTE:\nPrimero analiza el JSON de productos.\nLuego redacta usando EXCLUSIVAMENTE esos productos.\n\nUsuario:\n{{ $('Code in JavaScript1').item.json.message }}\n\nPresupuesto:\n{{ $('Code in JavaScript1').item.json.budget }}\n\nProductos disponibles:\n{{ JSON.stringify($json) }}\n\nRESPONDE EN ESTE FORMATO:\n\nExplicación breve y humana.\n\nJSON FINAL:\n{\n\"recommendations\":[\n{\n\"option\":\"Premium\",\n\"products\":[\n{\n\"id\":0,\n\"nombre\":\"\",\n\"precio\":0\n}\n]\n}\n]\n}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1040,
+        -48
+      ],
+      "id": "61bd5fbf-9536-42e5-99a0-bae2aa716339",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        160
+      ],
+      "id": "44723e43-db13-48d7-ae79-b1c0abf53558",
+      "name": "Ollama Chat Model2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const products = items.map(i => i.json);\n\nconst motherboards = products.filter(\np => p.categoria === \"Placa madre\"\n);\n\nconst cpus = products.filter(\np => p.categoria === \"Procesador\"\n);\n\nconst rams = products.filter(\np => p.categoria === \"Memoria RAM\"\n);\n\nconst gpus = products.filter(\np => p.categoria === \"Tarjeta grafica\"\n);\n\nconst psus = products.filter(\np => p.categoria === \"Fuente de poder\"\n);\n\nconst storages = products.filter(\np => p.categoria === \"Almacenamiento\"\n);\n\nconst cases = products.filter(\np => p.categoria === \"Gabinete\"\n);\n\nfunction compatibleBuild(cpu, motherboard, ram, gpu, psu, storage, pcCase){\n\nif(!cpu || !motherboard || !ram || !gpu || !psu || !storage || !pcCase){\n    return null;\n}\n\n// CPU ↔ Motherboard socket\nif(cpu.cpu_socket_cpu !== motherboard.placa_socket_cpu){\n    return null;\n}\n\n// RAM ↔ Motherboard DDR\nif(ram.ram_tipo !== motherboard.placa_tipo_ram){\n    return null;\n}\n\n// PSU wattage\nif(psu.fuente_potencia_w < gpu.gpu_consumo_recomendado_w){\n    return null;\n}\n\nconst total =\n    Number(cpu.precio) +\n    Number(motherboard.precio) +\n    Number(ram.precio) +\n    Number(gpu.precio) +\n    Number(psu.precio) +\n    Number(storage.precio) +\n    Number(pcCase.precio);\n\nreturn {\n    total_price: total,\n    products: [\n        cpu,\n        motherboard,\n        ram,\n        gpu,\n        psu,\n        storage,\n        pcCase\n    ].map(p => ({\n        id_producto: p.id_producto,\n        nombre: p.nombre,\n        categoria: p.categoria,\n        precio: p.precio\n    }))\n};\n```\n\n}\n\nconst recommendations = [];\n\nfor(const cpu of cpus){\n\n```\nconst motherboard = motherboards.find(\n    m => m.placa_socket_cpu === cpu.cpu_socket_cpu\n);\n\nconst ram = rams.find(\n    r => r.ram_tipo === motherboard?.placa_tipo_ram\n);\n\nconst gpu = gpus[0];\n\nconst psu = psus.find(\n    p => p.fuente_potencia_w >= gpu?.gpu_consumo_recomendado_w\n);\n\nconst storage = storages[0];\n\nconst pcCase = cases[0];\n\nconst build = compatibleBuild(\n    cpu,\n    motherboard,\n    ram,\n    gpu,\n    psu,\n    storage,\n    pcCase\n);\n\nif(build){\n    recommendations.push(build);\n}\n\n}\n\nrecommendations.sort(\n(a,b)=>a.total_price-b.total_price\n);\n\nconst finalRecommendations = recommendations.slice(0,3).map((r,index)=>({\noption: `Opción ${index+1}`,\ntotal_price: r.total_price,\nproducts: r.products\n}));\n\nreturn [{\njson:{\nrecommendations: finalRecommendations\n}\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -48
+      ],
+      "id": "0bdb6eca-423d-4139-857d-380e82893b90",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\n\nconst rawMessage = body.message ?? body.chatInput ?? body.text ?? '';\nconst mensaje = String(rawMessage).trim().replace(/\\s+/g, ' ');\nconst sessionId = body.sessionId || body.session_id || body.sessionID || 'session_' + Date.now();\nconst semantic = body.semantic && typeof body.semantic === 'object' ? body.semantic : null;\nconst history = Array.isArray(body.history) ? body.history.slice(-12) : [];\nconst memory = body.memory && typeof body.memory === 'object' ? body.memory : {};\n\nfunction extraerPresupuesto(texto) {\n  const limpio = texto\n    .replace(/pro\\s*res\\s*422/gi, 'prores')\n    .replace(/h\\.?\\s*264|h\\.?\\s*265/gi, 'codec')\n    .replace(/\b(1080p|1440p|2160p|4k|8k)\b/gi, 'resolucion');\n\n  const patrones = [\n    /\\$\\s*(\\d{3,5}(?:[.,]\\d+)?)/i,\n    /(\\d{3,5}(?:[.,]\\d+)?)\\s*(?:usd|d[oó]lares|dolares)/i,\n    /(?:presupuesto|budget|hasta|m[aá]ximo|maximo|menos de|con|por|de)\\s+\\$?\\s*(\\d{3,5}(?:[.,]\\d+)?)/i,\n  ];\n\n  for (const patron of patrones) {\n    const match = limpio.match(patron);\n    if (!match) continue;\n    const valor = parseFloat(match[1].replace(',', '.'));\n    if (Number.isFinite(valor) && valor >= 500) return valor;\n  }\n\n  return null;\n}\n\nconst presupuesto = extraerPresupuesto(mensaje);\n\nreturn [{\n  json: {\n    mensaje_limpio: mensaje,\n    presupuesto,\n    tiene_presupuesto: presupuesto !== null,\n    session_id: sessionId,\n    semantic,\n    history,\n    memory\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2480,
+        352
+      ],
+      "id": "472e6949-a491-4c7d-8f40-f7502c37acc2",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const respuesta = ($json.text || $json.output || $json.response || '').trim();\nconst base = $('Code in JavaScript3').first().json;\n\nconst fallback = {\n  intent: 'product_search',\n  confidence: 0.5,\n  parse_ok: false,\n  mensaje_limpio: base.mensaje_limpio,\n  presupuesto: base.presupuesto,\n  tiene_presupuesto: base.tiene_presupuesto,\n  session_id: base.session_id\n};\n\nconst jsonMatch = respuesta.match(/\\{[\\s\\S]*\\}/);\nif (!jsonMatch) {\n  return [{ json: fallback }];\n}\n\ntry {\n  const parsed = JSON.parse(jsonMatch[0]);\n  return [{\n    json: {\n      intent: parsed.intent || 'product_search',\n      confidence: parsed.confidence || 0.5,\n      parse_ok: true,\n      mensaje_limpio: base.mensaje_limpio,\n      presupuesto: base.presupuesto,\n      tiene_presupuesto: base.tiene_presupuesto,\n      session_id: base.session_id\n    }\n  }];\n} catch (error) {\n  return [{ json: fallback }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2144,
+        352
+      ],
+      "id": "ce95aa37-5e69-44cb-827d-c2701f8efe16",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a30d034e-c9b6-47f2-a071-f9707b7a9e45",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "product_search",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2032,
+        352
+      ],
+      "id": "85ece741-b305-4fe4-91f4-ede5e4268501",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Code in JavaScript3').first().json;\nconst semantic = base.semantic || {};\nconst mensaje = String(base.mensaje_limpio || '').toLowerCase();\n\nconst categoriasPcCompleta = ['Procesador', 'Placa madre', 'Memoria RAM', 'Tarjeta grafica', 'Fuente de poder', 'Almacenamiento', 'Gabinete'];\nconst categoriasSemanticas = Array.isArray(semantic.categories)\n  ? semantic.categories.filter(Boolean)\n  : [];\n\nconst categorias = categoriasSemanticas.length > 0\n  ? categoriasSemanticas\n  : categoriasPcCompleta;\n\nconst tipoUso = semantic.tipo_uso || 'general';\nlet prioridad = semantic.prioridad || 'equilibrado';\nif (/barat|econ[oó]mic|precio|ahorrar|bajo costo/.test(mensaje)) prioridad = 'precio';\nif (/potente|alto rendimiento|gama alta|4k|1440p|render|stream/.test(mensaje)) prioridad = 'rendimiento';\nif (tipoUso === 'gaming_ligero') prioridad = 'precio';\n\nconst presupuesto = base.presupuesto ?? semantic.presupuesto_sugerido ?? null;\n\nreturn [{\n  json: {\n    categorias_necesarias: categorias,\n    query_semantica: semantic.query || base.mensaje_limpio,\n    presupuesto,\n    presupuesto_sugerido: !base.presupuesto && semantic.presupuesto_sugerido ? semantic.presupuesto_sugerido : null,\n    tipo_uso: tipoUso,\n    prioridad,\n    semantic,\n    history: base.history || [],\n    memory: base.memory || {},\n    parse_ok: Boolean(semantic.enabled),\n    session_id: base.session_id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        176
+      ],
+      "id": "5dccb98c-abdf-4d28-8abb-313b5902482a",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  p.id_producto,\n  c.nombre AS categoria,\n  m.nombre AS marca,\n  p.nombre,\n  p.modelo,\n  p.descripcion,\n  p.precio,\n  p.stock,\n  p.garantia_meses,\n  pm.socket_cpu AS placa_socket_cpu,\n  pm.tipo_ram AS placa_tipo_ram,\n  pm.formato AS placa_formato,\n  cpu.socket_cpu AS cpu_socket,\n  cpu.nucleos AS cpu_nucleos,\n  cpu.hilos AS cpu_hilos,\n  cpu.tdp_w AS cpu_tdp_w,\n  ram.tipo_ram AS ram_tipo,\n  ram.capacidad_gb AS ram_gb,\n  ram.velocidad_mhz AS ram_velocidad_mhz,\n  gpu.memoria_vram_gb AS gpu_vram_gb,\n  gpu.consumo_recomendado_w AS gpu_consumo_w,\n  gpu.largo_mm AS gpu_largo_mm,\n  psu.potencia_w AS fuente_watts,\n  alm.tipo AS alm_tipo,\n  alm.interfaz AS alm_interfaz,\n  gab.formato_soportado AS gab_formato,\n  gab.largo_gpu_max_mm AS gab_largo_max\nFROM productos p\nJOIN categorias c ON c.id_categoria = p.id_categoria\nJOIN marcas m ON m.id_marca = p.id_marca\nLEFT JOIN especificaciones_placa_madre pm ON pm.id_producto = p.id_producto\nLEFT JOIN especificaciones_procesador cpu ON cpu.id_producto = p.id_producto\nLEFT JOIN especificaciones_memoria_ram ram ON ram.id_producto = p.id_producto\nLEFT JOIN especificaciones_tarjeta_grafica gpu ON gpu.id_producto = p.id_producto\nLEFT JOIN especificaciones_fuente_poder psu ON psu.id_producto = p.id_producto\nLEFT JOIN especificaciones_almacenamiento alm ON alm.id_producto = p.id_producto\nLEFT JOIN especificaciones_gabinete gab ON gab.id_producto = p.id_producto\nWHERE p.estado = 'disponible'\n  AND p.stock > 0\n  AND c.nombre = ANY(ARRAY[{{ $('Code in JavaScript5').first().json.categorias_necesarias.map(c => \"'\" + c + \"'\").join(',') }}])\nORDER BY c.nombre, p.precio ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1504,
+        176
+      ],
+      "id": "a7cfcc56-3d80-473f-be7b-bd1de30924a4",
+      "name": "Execute a SQL query1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const productos = $input.all().map(i => i.json);\nconst config = $('Code in JavaScript5').first().json;\nconst presupuesto = config.presupuesto;\nconst semantic = config.semantic || {};\nconst tipoUso = config.tipo_uso || 'general';\nconst prioridad = config.prioridad || 'equilibrado';\nconst categoriasSolicitadas = Array.isArray(config.categorias_necesarias) && config.categorias_necesarias.length\n  ? config.categorias_necesarias\n  : ['Procesador', 'Placa madre', 'Memoria RAM', 'Tarjeta grafica', 'Fuente de poder', 'Almacenamiento', 'Gabinete'];\n\nconst scoreById = {};\nfor (const match of semantic.matches || []) {\n  const id = Number(match.id_producto);\n  const relevance = Number(match.relevance || 0);\n  scoreById[id] = Math.max(scoreById[id] || 0, relevance);\n}\n\nconst porCategoria = {};\nfor (const p of productos) {\n  if (!porCategoria[p.categoria]) porCategoria[p.categoria] = [];\n  porCategoria[p.categoria].push(p);\n}\n\nfunction productSemanticScore(p) {\n  return Number(scoreById[Number(p.id_producto)] || 0);\n}\n\nfunction productPerfScore(p, cat) {\n  const precio = Number(p.precio || 0);\n  if (cat === 'Tarjeta grafica') return Number(p.gpu_vram_gb || 0) * 120 + Number(p.gpu_consumo_w || 0) * 0.6 + precio * 0.18;\n  if (cat === 'Procesador') return Number(p.cpu_nucleos || 0) * 45 + Number(p.cpu_hilos || 0) * 12 + Number(p.cpu_tdp_w || 0) * 0.18 + precio * 0.05;\n  if (cat === 'Memoria RAM') return Number(p.ram_gb || 0) * 5 + Number(p.ram_velocidad_mhz || 0) * 0.015 + precio * 0.02;\n  if (cat === 'Almacenamiento') return precio * 0.08;\n  if (cat === 'Fuente de poder') return Number(p.fuente_watts || 0) * 0.08;\n  return precio * 0.03;\n}\n\nfunction nombreProducto(p) {\n  return String((p && (p.nombre || p.modelo || p.descripcion)) || '').toLowerCase();\n}\n\nfunction gpuTier(p) {\n  const text = nombreProducto(p);\n  if (text.includes('4090')) return 100;\n  if (text.includes('7900 xtx')) return 92;\n  if (text.includes('4070 super')) return 80;\n  if (text.includes('7800 xt')) return 76;\n  if (text.includes('4060 ti')) return 63;\n  if (text.includes('4060')) return 52;\n  if (text.includes('rx 6600') || text.includes('rx6600') || text.includes('6600')) return 42;\n  if (text.includes('3050')) return 30;\n  return Number(p.gpu_vram_gb || 0) * 4 + Number(p.precio || 0) / 25;\n}\n\nfunction cpuTier(p) {\n  const text = nombreProducto(p);\n  if (/14900|i9/.test(text)) return 100;\n  if (/7800x3d/.test(text)) return 92;\n  if (/13700|i7/.test(text)) return 86;\n  if (/7700x/.test(text)) return 78;\n  if (/7600/.test(text)) return 66;\n  if (/5600x|12400|i5/.test(text)) return 56;\n  if (/12100|i3/.test(text)) return 38;\n  if (/4500/.test(text)) return 34;\n  return Number(p.cpu_nucleos || 0) * 7 + Number(p.cpu_hilos || 0) * 2;\n}\n\nfunction ramTier(p) {\n  const gb = Number(p.ram_gb || 0);\n  if (gb >= 32 && gb <= 48) return 92;\n  if (gb >= 16) return 78;\n  if (gb >= 64) return tipoUso === 'productividad_creativa' ? 100 : 70;\n  return gb * 3;\n}\n\nfunction storageTier(p) {\n  const text = String(p.alm_tipo || '') + ' ' + String(p.alm_interfaz || '') + ' ' + nombreProducto(p);\n  let score = Number(p.precio || 0) / 8;\n  if (/nvme|m.2|pcie/i.test(text)) score += 45;\n  if (/ssd/i.test(text)) score += 25;\n  if (/hdd/i.test(text)) score -= 25;\n  return score;\n}\n\nfunction productSortScore(p, cat) {\n  const price = Number(p.precio || 0);\n  const budget = Number(presupuesto || 0);\n  const balancedPc = (tipoUso === 'gaming' || tipoUso === 'general') && categoriasSolicitadas.includes('Tarjeta grafica');\n\n  if (balancedPc) {\n    if (cat === 'Tarjeta grafica') {\n      const affordable = !budget || price <= budget * (tipoUso === 'gaming' ? 0.5 : 0.45);\n      return (affordable ? 100000 : 0) + gpuTier(p) * 100 - price * 0.25;\n    }\n    if (cat === 'Procesador') {\n      const affordable = !budget || price <= budget * 0.32;\n      return (affordable ? 100000 : 0) + cpuTier(p) * 70 - price * 0.45;\n    }\n    if (cat === 'Memoria RAM') return ramTier(p) * 80 - price * 0.6;\n    if (cat === 'Almacenamiento') return storageTier(p) * 35 - price * 0.15;\n    if (cat === 'Fuente de poder') return Number(p.fuente_watts || 0) * 0.35 - price * 1.2;\n    if (cat === 'Placa madre') return -price + Number(p.placa_conectores_m2 || 0) * 8;\n    if (cat === 'Gabinete') return -price + Number(p.gab_largo_max || 0) * 0.02;\n  }\n\n  return productSemanticScore(p) * 1000 + productPerfScore(p, cat) - price * 0.05;\n}\n\nfor (const [cat, lista] of Object.entries(porCategoria)) {\n  lista.sort((a, b) => {\n    if (tipoUso === 'gaming_ligero' && cat === 'Memoria RAM') {\n      const aOk = Number(a.ram_gb || 0) >= 16;\n      const bOk = Number(b.ram_gb || 0) >= 16;\n      if (aOk !== bOk) return aOk ? -1 : 1;\n    }\n    if (prioridad === 'precio' || tipoUso === 'gaming_ligero') return Number(a.precio || 0) - Number(b.precio || 0);\n    return productSortScore(b, cat) - productSortScore(a, cat);\n  });\n}\n\n\nfunction componentScore(p, cat) {\n  const text = nombreProducto(p);\n  const price = Number(p.precio || 0);\n  let score = productSemanticScore(p) * 900 + productPerfScore(p, cat);\n\n  if (tipoUso === 'productividad_creativa') {\n    if (cat === 'Tarjeta grafica') {\n      score = Number(p.gpu_vram_gb || 0) * 130 + gpuTier(p) * 25;\n      if (text.includes('nvidia') || text.includes('rtx')) score += 500;\n      if (text.includes('4070 super')) score += 420;\n      if (text.includes('4060 ti')) score += 220;\n      if (text.includes('3050') || text.includes('rx 6600') || text.includes('rx6600')) score -= 260;\n      score -= price * 0.18;\n    } else if (cat === 'Procesador') {\n      score = Number(p.cpu_nucleos || 0) * 90 + Number(p.cpu_hilos || 0) * 32 + cpuTier(p) * 10 - price * 0.25;\n    } else if (cat === 'Memoria RAM') {\n      score = ramTier(p) * 120 - price * 0.35;\n    } else if (cat === 'Almacenamiento') {\n      score = storageTier(p) * 100 - price * 0.2;\n    }\n  }\n\n  if (prioridad === 'precio') score -= price * 2;\n  return score;\n}\n\nconst fullBuildCategories = ['Procesador', 'Placa madre', 'Memoria RAM', 'Tarjeta grafica', 'Fuente de poder', 'Almacenamiento', 'Gabinete'];\nconst esBuildCompleto = fullBuildCategories.every(cat => categoriasSolicitadas.includes(cat));\n\nif (!esBuildCompleto) {\n  const candidatosComponentes = categoriasSolicitadas\n    .flatMap(cat => (porCategoria[cat] || []).map(p => ({ cat, p })))\n    .filter(({ p }) => !presupuesto || Number(p.precio || 0) <= Number(presupuesto));\n\n  const ranked = candidatosComponentes\n    .sort((a, b) => componentScore(b.p, b.cat) - componentScore(a.p, a.cat))\n    .slice(0, 3);\n\n  if (ranked.length === 0) {\n    return [{\n      json: {\n        fallback: true,\n        mensaje: 'No encontré productos disponibles para esa categoría con los filtros indicados.',\n        builds: [],\n        semantic,\n        session_id: config.session_id\n      }\n    }];\n  }\n\n  const etiquetasComponente = ['Recomendada', 'Alternativa', 'Económica'];\n  return [{\n    json: {\n      fallback: false,\n      builds: ranked.map(({ cat, p }, index) => ({\n        etiqueta: etiquetasComponente[index] || 'Opción ' + (index + 1),\n        total: Number(p.precio || 0),\n        score: componentScore(p, cat),\n        items: [{\n          id_producto: p.id_producto,\n          categoria: cat,\n          nombre: p.nombre || '',\n          marca: p.marca || '',\n          precio: Number(p.precio || 0)\n        }]\n      })),\n      semantic,\n      session_id: config.session_id\n    }\n  }];\n}\n\nfunction buildEsCompatible(build) {\n  const cpu = build['Procesador'];\n  const placa = build['Placa madre'];\n  const ram = build['Memoria RAM'];\n  const gpu = build['Tarjeta grafica'];\n  const fuente = build['Fuente de poder'];\n  const gab = build['Gabinete'];\n\n  if (cpu && placa && cpu.cpu_socket !== placa.placa_socket_cpu) return false;\n  if (ram && placa && ram.ram_tipo !== placa.placa_tipo_ram) return false;\n  if (gpu && fuente && Number(fuente.fuente_watts || 0) < Number(gpu.gpu_consumo_w || 0)) return false;\n  if (gpu && gab && Number(gab.gab_largo_max || 0) < Number(gpu.gpu_largo_mm || 0)) return false;\n\n  if (placa && gab) {\n    const formatos = String(gab.gab_formato || '').split(',').map(f => f.trim());\n    if (placa.placa_formato && !formatos.includes(placa.placa_formato)) return false;\n  }\n\n  return true;\n}\n\nfunction precioTotal(build) {\n  return Object.values(build)\n    .filter(Boolean)\n    .reduce((sum, p) => sum + Number(p.precio || 0), 0);\n}\n\nfunction buildScore(build) {\n  const total = precioTotal(build);\n  const balancedPc = (tipoUso === 'gaming' || tipoUso === 'general') && categoriasSolicitadas.includes('Tarjeta grafica');\n\n  if (balancedPc) {\n    const cpu = build['Procesador'];\n    const gpu = build['Tarjeta grafica'];\n    const ram = build['Memoria RAM'];\n    const placa = build['Placa madre'];\n    const fuente = build['Fuente de poder'];\n    const alm = build['Almacenamiento'];\n    const gab = build['Gabinete'];\n\n    let score = 0;\n    const gpuScore = gpu ? gpuTier(gpu) : 0;\n    const cpuScore = cpu ? cpuTier(cpu) : 0;\n\n    if (gpu) score += gpuScore * 140;\n    if (cpu) score += cpuScore * 62;\n    if (ram) score += ramTier(ram) * 28;\n    if (alm) score += storageTier(alm) * 14;\n\n    if (gpu && cpu) {\n      const gpuOverCpu = gpuScore - cpuScore;\n      const cpuOverGpu = cpuScore - gpuScore;\n      if (gpuOverCpu > 22) score -= (gpuOverCpu - 22) * 150;\n      if (cpuOverGpu > 16) score -= (cpuOverGpu - 16) * 130;\n    }\n\n    if (cpu && presupuesto && (tipoUso === 'gaming' || tipoUso === 'general')) {\n      const cpuBudget = Number(presupuesto) * (tipoUso === 'gaming' ? 0.24 : 0.22);\n      score -= Math.max(0, Number(cpu.precio || 0) - cpuBudget) * 8;\n    }\n\n    if (placa) {\n      const placaText = nombreProducto(placa);\n      const placaPrice = Number(placa.precio || 0);\n      if (/a520/.test(placaText) && (gpuScore > 55 || cpuScore > 55)) score -= 850;\n      if (/b660/.test(placaText) && cpuScore > 82) score -= 700;\n      if (placaPrice < 105 && (gpuScore > 70 || cpuScore > 70)) score -= 500;\n    }\n\n    if (fuente && gpu) {\n      const margen = Number(fuente.fuente_watts || 0) - Number(gpu.gpu_consumo_w || 0);\n      score += Math.max(-250, Math.min(90, margen * 0.6));\n    }\n\n    if (placa) score -= Math.max(0, Number(placa.precio || 0) - 240) * 4.2;\n    if (ram && tipoUso !== 'productividad_creativa') score -= Math.max(0, Number(ram.ram_gb || 0) - 32) * 18;\n    if (gab) score -= Math.max(0, Number(gab.precio || 0) - 130) * 1.6;\n    if (fuente) score -= Math.max(0, Number(fuente.precio || 0) - 140) * 0.9;\n\n    if (presupuesto) {\n      const budget = Number(presupuesto);\n      const target = budget * (tipoUso === 'gaming' ? 0.93 : 0.86);\n      score -= Math.abs(target - total) * 0.08;\n      if (total < budget * 0.62) score -= (budget * 0.62 - total) * 0.45;\n    }\n\n    if (prioridad === 'precio') score -= total * 0.2;\n    else score -= total * 0.03;\n\n    return score;\n  }\n\n  let semanticScore = 0;\n  let perfScore = 0;\n\n  for (const [cat, p] of Object.entries(build)) {\n    if (!p) continue;\n    const sem = productSemanticScore(p);\n    if ((tipoUso === 'gaming' || tipoUso === 'gaming_ligero') && cat === 'Tarjeta grafica') semanticScore += sem * (tipoUso === 'gaming_ligero' ? 180 : 650);\n    else if ((tipoUso === 'gaming' || tipoUso === 'gaming_ligero') && cat === 'Procesador') semanticScore += sem * (tipoUso === 'gaming_ligero' ? 80 : 250);\n    else semanticScore += sem * 120;\n    const perf = productPerfScore(p, cat);\n    if (tipoUso === 'gaming_ligero' && cat === 'Tarjeta grafica') perfScore += perf * 0.75;\n    else if (tipoUso === 'gaming_ligero' && ['Procesador', 'Memoria RAM'].includes(cat)) perfScore += perf * 0.35;\n    else if (tipoUso === 'gaming' && cat === 'Tarjeta grafica') perfScore += perf * 6;\n    else if (tipoUso === 'gaming' && cat === 'Procesador') perfScore += perf * 1.1;\n    else if (tipoUso === 'productividad_creativa' && ['Procesador', 'Memoria RAM', 'Almacenamiento', 'Tarjeta grafica'].includes(cat)) perfScore += perf * 1.8;\n    else if (tipoUso === 'oficina') perfScore += cat === 'Tarjeta grafica' ? perf * 0.2 : perf * 0.8;\n    else if (tipoUso === 'gaming' && cat === 'Memoria RAM') perfScore += perf * 0.45;\n    else perfScore += perf;\n  }\n\n  let budgetScore = 0;\n  if (presupuesto) {\n    const diff = Math.max(0, Number(presupuesto) - total);\n    budgetScore = 120 - (diff / Number(presupuesto)) * 40;\n  }\n\n  const priceScore = (prioridad === 'precio' || tipoUso === 'gaming_ligero') ? -total * 0.75 : total * 0.05;\n  return semanticScore + perfScore + budgetScore + priceScore;\n}\n\nfunction gamingLightUpgradeScore(build) {\n  const total = precioTotal(build);\n  const cpu = build['Procesador'];\n  const gpu = build['Tarjeta grafica'];\n  const ram = build['Memoria RAM'];\n  const alm = build['Almacenamiento'];\n\n  let score = 0;\n  if (gpu) score += productPerfScore(gpu, 'Tarjeta grafica') * 4.2;\n  if (cpu) score += productPerfScore(cpu, 'Procesador') * 1.8;\n  if (ram) {\n    score += productPerfScore(ram, 'Memoria RAM') * 0.6;\n    const gb = Number(ram.ram_gb || 0);\n    if (gb >= 16) score += 260;\n    if (gb > 16) score += Math.min(80, (gb - 16) * 4);\n  }\n  if (alm && /nvme|m.2|pcie/i.test(String(alm.alm_tipo || '') + ' ' + String(alm.alm_interfaz || ''))) score += 35;\n\n  if (presupuesto) {\n    const budget = Number(presupuesto);\n    const target = budget * 0.92;\n    score -= Math.abs(target - total) * 0.35;\n    if (total < budget * 0.58) score -= (budget * 0.58 - total) * 0.6;\n  }\n\n  return score;\n}\n\nfunction gamingLightValueScore(build) {\n  return gamingLightUpgradeScore(build) - precioTotal(build) * 0.18;\n}\n\nconst displayOrder = ['Procesador', 'Placa madre', 'Memoria RAM', 'Tarjeta grafica', 'Fuente de poder', 'Almacenamiento', 'Gabinete'];\nconst generationOrder = tipoUso === 'productividad_creativa'\n  ? ['Procesador', 'Placa madre', 'Memoria RAM', 'Tarjeta grafica', 'Fuente de poder', 'Almacenamiento', 'Gabinete']\n  : (tipoUso === 'gaming' || tipoUso === 'general' || tipoUso === 'gaming_ligero')\n    ? ['Tarjeta grafica', 'Procesador', 'Placa madre', 'Memoria RAM', 'Fuente de poder', 'Almacenamiento', 'Gabinete']\n    : displayOrder;\nconst categoriasBase = categoriasSolicitadas.filter(cat => Array.isArray(porCategoria[cat]) && porCategoria[cat].length > 0);\nconst categorias = [\n  ...generationOrder.filter(cat => categoriasBase.includes(cat)),\n  ...categoriasBase.filter(cat => !generationOrder.includes(cat))\n];\n\n\nfunction productoTexto(p) {\n  return String((p && (p.nombre || p.modelo || p.descripcion)) || '');\n}\n\nfunction creativeGpuScore(gpu) {\n  const text = productoTexto(gpu).toLowerCase();\n  let score = Number(gpu.gpu_vram_gb || 0) * 48 + gpuTier(gpu) * 8;\n  if (text.includes('nvidia') || text.includes('rtx')) score += 700;\n  if (text.includes('4090')) score += 420;\n  if (text.includes('4070 super')) score += 650;\n  if (text.includes('4060 ti')) score += 360;\n  if (text.includes('3050') || text.includes('rx 6600') || text.includes('rx6600')) score -= 420;\n  return score;\n}\n\nfunction creativeCpuScore(cpu) {\n  const text = productoTexto(cpu).toLowerCase();\n  let score = Number(cpu.cpu_nucleos || 0) * 75 + Number(cpu.cpu_hilos || 0) * 26 + cpuTier(cpu) * 7;\n  if (/7800x3d/.test(text)) score -= 180;\n  if (/i7|i9|13700|14900/.test(text)) score += 90;\n  return score;\n}\n\nfunction creativeStorageScore(alm) {\n  const text = String(alm.alm_tipo || '') + ' ' + String(alm.alm_interfaz || '') + ' ' + productoTexto(alm);\n  let score = Number(alm.precio || 0) * 0.5;\n  if (/nvme|m.2|pcie/i.test(text)) score += 260;\n  if (/hdd/i.test(text)) score -= 260;\n  return score;\n}\n\nfunction creativeBuildScore(build) {\n  const total = precioTotal(build);\n  const cpu = build['Procesador'];\n  const gpu = build['Tarjeta grafica'];\n  const ram = build['Memoria RAM'];\n  const placa = build['Placa madre'];\n  const alm = build['Almacenamiento'];\n  const fuente = build['Fuente de poder'];\n\n  let score = 0;\n  if (gpu) score += creativeGpuScore(gpu) * 2.2;\n  if (cpu) score += creativeCpuScore(cpu) * 1.35;\n  if (ram) {\n    const gb = Number(ram.ram_gb || 0);\n    score += gb * 42 + Number(ram.ram_velocidad_mhz || 0) * 0.08;\n    if (gb < 32) score -= 900;\n    if (gb >= 64) score += 1300;\n  }\n  if (alm) score += creativeStorageScore(alm);\n  if (fuente && gpu) {\n    const margen = Number(fuente.fuente_watts || 0) - Number(gpu.gpu_consumo_w || 0);\n    score += Math.max(-500, Math.min(180, margen * 0.8));\n  }\n\n  if (placa && cpu) {\n    const placaText = productoTexto(placa).toLowerCase();\n    const cpuText = productoTexto(cpu).toLowerCase();\n    if (placaText.includes('a520')) score -= 900;\n    if (placaText.includes('b660') && (cpuText.includes('i9') || cpuText.includes('14900'))) score -= 1200;\n    if (Number(placa.precio || 0) < 120 && Number(cpu.precio || 0) > 350) score -= 650;\n  }\n\n  if (presupuesto) {\n    const budget = Number(presupuesto);\n    if (total > budget) score -= (total - budget) * 120;\n    score -= Math.abs(budget * 0.88 - total) * 0.12;\n  }\n\n  score -= total * 0.025;\n  return score;\n}\n\nfunction armarWorkstationsCreativas() {\n  const cpus = (porCategoria['Procesador'] || []).slice(0, 7);\n  const placas = (porCategoria['Placa madre'] || []).slice(0, 6);\n  const rams = (porCategoria['Memoria RAM'] || [])\n    .filter(r => Number(r.ram_gb || 0) >= 32)\n    .slice(0, 6);\n  const gpus = (porCategoria['Tarjeta grafica'] || [])\n    .filter(g => Number(g.gpu_vram_gb || 0) >= 8)\n    .slice(0, 7);\n  const fuentes = (porCategoria['Fuente de poder'] || []).slice(0, 5);\n  const almacenes = (porCategoria['Almacenamiento'] || [])\n    .filter(a => {\n      const text = String(a.alm_tipo || '') + ' ' + String(a.alm_interfaz || '') + ' ' + productoTexto(a).toLowerCase();\n      return text.includes('nvme') || text.includes('m.2') || text.includes('pcie');\n    })\n    .slice(0, 7);\n  const gabinetes = (porCategoria['Gabinete'] || []).slice(0, 5);\n\n  const resultados = [];\n  for (const cpu of cpus) {\n    for (const placa of placas) {\n      if (cpu.cpu_socket !== placa.placa_socket_cpu) continue;\n      for (const ram of rams) {\n        if (ram.ram_tipo !== placa.placa_tipo_ram) continue;\n        for (const gpu of gpus) {\n          for (const fuente of fuentes) {\n            if (Number(fuente.fuente_watts || 0) < Number(gpu.gpu_consumo_w || 0)) continue;\n            for (const alm of almacenes) {\n              for (const gab of gabinetes) {\n                const build = {\n                  'Procesador': cpu,\n                  'Placa madre': placa,\n                  'Memoria RAM': ram,\n                  'Tarjeta grafica': gpu,\n                  'Fuente de poder': fuente,\n                  'Almacenamiento': alm,\n                  'Gabinete': gab,\n                };\n                if (!buildEsCompatible(build)) continue;\n                const total = precioTotal(build);\n                if (presupuesto && total > Number(presupuesto)) continue;\n                resultados.push({\n                  items: displayOrder.map(cat => build[cat]).filter(Boolean).map((p) => ({\n                    id_producto: p.id_producto,\n                    categoria: p.categoria,\n                    nombre: p.nombre || '',\n                    marca: p.marca || '',\n                    precio: Number(p.precio || 0),\n                  })),\n                  total,\n                  score: creativeBuildScore(build),\n                });\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n  return resultados.sort((a, b) => b.score - a.score);\n}\n\nif (tipoUso === 'productividad_creativa') {\n  const buildsCreativas = armarWorkstationsCreativas();\n  if (buildsCreativas.length === 0) {\n    return [{\n      json: {\n        fallback: true,\n        mensaje: 'No encontré combinaciones compatibles para una workstation creativa con los filtros indicados.',\n        builds: [],\n        semantic,\n        session_id: config.session_id,\n      }\n    }];\n  }\n\n  const budget = Number(presupuesto || 0);\n  const elegidasCreativas = [];\n  const addCreative = (build) => {\n    if (!build) return;\n    const sig = build.items.map(p => p.id_producto).sort((a, b) => a - b).join('-');\n    if (!elegidasCreativas.some(item => item.items.map(p => p.id_producto).sort((a, b) => a - b).join('-') === sig)) elegidasCreativas.push(build);\n  };\n\n  addCreative(buildsCreativas[0]);\n  const balanceadas = budget\n    ? buildsCreativas.filter(b => b.total <= budget * 0.9 && b.total >= budget * 0.65)\n    : buildsCreativas;\n  addCreative(balanceadas[0] || buildsCreativas[Math.floor(buildsCreativas.length / 2)]);\n  const economicasPro = buildsCreativas\n    .filter(b => !budget || (b.total <= budget * 0.75 && b.total >= budget * 0.45))\n    .sort((a, b) => a.total - b.total || b.score - a.score);\n  addCreative(economicasPro[0] || [...buildsCreativas].sort((a, b) => a.total - b.total)[0]);\n\n  for (const build of buildsCreativas) {\n    if (elegidasCreativas.length >= 3) break;\n    addCreative(build);\n  }\n\n  const queryCreativa = String(config.query_semantica || semantic.query || '').toLowerCase();\n  const incluyeAudio = queryCreativa.includes('ableton') || queryCreativa.includes('ozone') || queryCreativa.includes('mixing') || queryCreativa.includes('mastering') || queryCreativa.includes('produccion musical') || queryCreativa.includes('producción musical');\n  const incluyeColor = queryCreativa.includes('davinci') || queryCreativa.includes('resolve') || queryCreativa.includes('color grading') || queryCreativa.includes('prores') || queryCreativa.includes('pro res');\n  const etiquetasCreativas = incluyeAudio && incluyeColor\n    ? ['Workstation color/audio', 'Balance para DaVinci y Ableton', 'Mínima viable']\n    : incluyeAudio\n      ? ['Workstation para producción musical', 'Balance para Ableton/Ozone', 'Mínima viable']\n      : ['Workstation profesional', 'Balance para DaVinci Resolve', 'Mínima viable'];\n  return [{\n    json: {\n      fallback: false,\n      builds: elegidasCreativas.slice(0, 3).map((build, index) => ({ etiqueta: etiquetasCreativas[index], ...build })),\n      semantic,\n      session_id: config.session_id,\n    }\n  }];\n}\n\nfunction limiteCategoria(cat) {\n  if (tipoUso === 'gaming_ligero') {\n    if (['Fuente de poder', 'Almacenamiento', 'Gabinete'].includes(cat)) return 3;\n    if (cat === 'Tarjeta grafica') return 7;\n    return 8;\n  }\n  if (tipoUso === 'gaming' || tipoUso === 'general') {\n    if (['Fuente de poder', 'Almacenamiento', 'Gabinete'].includes(cat)) return 3;\n    if (cat === 'Procesador') return 9;\n    return 8;\n  }\n  if (tipoUso === 'productividad_creativa') {\n    if (cat === 'Procesador') return 7;\n    if (cat === 'Placa madre') return 6;\n    if (cat === 'Memoria RAM') return 6;\n    if (cat === 'Tarjeta grafica') return 7;\n    if (cat === 'Almacenamiento') return 5;\n    return 4;\n  }\n  return 8;\n}\n\nfunction generarBuilds(cats, idx, actual, resultados) {\n  if (resultados.length >= (tipoUso === 'productividad_creativa' ? 1800 : 10000)) return;\n  if (idx === cats.length) {\n    if (!buildEsCompatible(actual)) return;\n\n    const total = precioTotal(actual);\n    if (presupuesto && total > Number(presupuesto)) return;\n\n    resultados.push({\n      items: Object.entries(actual)\n        .filter(([, p]) => p)\n        .map(([cat, p]) => ({\n          id_producto: p.id_producto,\n          categoria: cat,\n          nombre: p.nombre || '',\n          marca: p.marca || '',\n          precio: Number(p.precio || 0)\n        }))\n        .sort((a, b) => displayOrder.indexOf(a.categoria) - displayOrder.indexOf(b.categoria)),\n      total,\n      score: buildScore(actual),\n      upgradeScore: gamingLightUpgradeScore(actual),\n      valueScore: gamingLightValueScore(actual)\n    });\n    return;\n  }\n\n  const cat = cats[idx];\n  for (const prod of porCategoria[cat].slice(0, limiteCategoria(cat))) {\n    const siguiente = { ...actual, [cat]: prod };\n    if (buildEsCompatible(siguiente)) generarBuilds(cats, idx + 1, siguiente, resultados);\n    if (resultados.length >= (tipoUso === 'productividad_creativa' ? 1800 : 10000)) return;\n  }\n}\n\nconst buildsValidas = [];\ngenerarBuilds(categorias, 0, {}, buildsValidas);\n\nif (buildsValidas.length === 0) {\n  return [{\n    json: {\n      fallback: true,\n      mensaje: 'No encontré combinaciones compatibles con los filtros indicados.',\n      builds: [],\n      semantic,\n      session_id: config.session_id\n    }\n  }];\n}\n\nfunction signature(build) {\n  return build.items.map(p => p.id_producto).sort((a, b) => a - b).join('-');\n}\n\nfunction uniquePush(target, build) {\n  if (!build) return;\n  if (!target.some(item => signature(item) === signature(build))) target.push(build);\n}\n\nconst byScore = [...buildsValidas].sort((a, b) => b.score - a.score);\nconst byPriceAsc = [...buildsValidas].sort((a, b) => a.total - b.total);\nconst byPriceDesc = [...buildsValidas].sort((a, b) => b.total - a.total);\n\nconst elegidas = [];\nlet etiquetas = ['Alto rendimiento', 'Equilibrada', 'Económica'];\n\nif (tipoUso === 'gaming_ligero') {\n  etiquetas = ['Recomendada para e-sports', 'Económica', 'Con margen de mejora'];\n  const budget = Number(presupuesto || 0);\n  const hasEnoughRam = (build) => build.items.some(p => p.categoria === 'Memoria RAM' && /(16|32|64)GB/i.test(p.nombre || ''));\n  const withEnoughRam = buildsValidas.filter(hasEnoughRam);\n  const candidates = withEnoughRam.length ? withEnoughRam : buildsValidas;\n  const sortedByValue = [...candidates].sort((a, b) => (b.valueScore || 0) - (a.valueScore || 0));\n  const sortedByUpgrade = [...candidates].sort((a, b) => (b.upgradeScore || 0) - (a.upgradeScore || 0));\n  const economy = [...candidates].sort((a, b) => a.total - b.total)[0];\n  const recommendedPool = budget\n    ? candidates.filter(b => b.total <= budget * 0.82 && (!economy || b.total >= economy.total + 20))\n    : candidates;\n  const upgradePool = budget\n    ? candidates.filter(b => b.total <= budget && b.total >= budget * 0.7)\n    : candidates;\n\n  uniquePush(elegidas, [...recommendedPool].sort((a, b) => (b.valueScore || 0) - (a.valueScore || 0))[0] || sortedByValue[0]);\n  uniquePush(elegidas, economy || byPriceAsc[0]);\n  uniquePush(elegidas, [...upgradePool].sort((a, b) => (b.upgradeScore || 0) - (a.upgradeScore || 0))[0] || sortedByUpgrade[0] || byPriceDesc[0]);\n} else {\n  const needsGamingRam = tipoUso === 'gaming' || tipoUso === 'general';\n  const hasEnoughRam = (build) => build.items.some(p => p.categoria === 'Memoria RAM' && /(16|32|64)GB/i.test(p.nombre || ''));\n  const selectionPool = needsGamingRam ? buildsValidas.filter(hasEnoughRam) : buildsValidas;\n  const rankedPool = selectionPool.length ? selectionPool : buildsValidas;\n  const rankedByScore = [...rankedPool].sort((a, b) => b.score - a.score);\n  const rankedByPriceAsc = [...rankedPool].sort((a, b) => a.total - b.total);\n  const budget = Number(presupuesto || 0);\n  const balancedPool = budget\n    ? rankedPool.filter(b => b.total <= budget * 0.9 && b.total >= budget * 0.72)\n    : rankedPool;\n  const rankedBalanced = [...(balancedPool.length ? balancedPool : rankedPool)].sort((a, b) => b.score - a.score);\n\n  uniquePush(elegidas, rankedByScore[0]);\n  uniquePush(elegidas, prioridad === 'precio' ? rankedByPriceAsc[0] : rankedBalanced[0] || rankedByScore[Math.floor(rankedByScore.length / 2)]);\n  uniquePush(elegidas, rankedByPriceAsc[0]);\n}\n\nfor (const build of byScore) {\n  if (elegidas.length >= 3) break;\n  uniquePush(elegidas, build);\n}\nfor (const build of byPriceDesc) {\n  if (elegidas.length >= 3) break;\n  uniquePush(elegidas, build);\n}\n\nreturn [{\n  json: {\n    fallback: false,\n    builds: elegidas.slice(0, 3).map((build, index) => ({ etiqueta: etiquetas[index], ...build })),\n    semantic,\n    session_id: config.session_id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1360,
+        176
+      ],
+      "id": "a1cb72b8-8da6-4420-8463-7097204c6a37",
+      "name": "Code in JavaScript6"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c13376ab-cf7f-44a5-a077-7ff4b3dd9ef9",
+              "leftValue": "={{ $json.fallback }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1216,
+        176
+      ],
+      "id": "897cd1ea-ac17-46b5-91b3-3c642c13de39",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Code in JavaScript6').first().json;\nconst config = $('Code in JavaScript5').first().json;\nconst builds = data.builds || [];\n\nif (data.fallback || builds.length === 0) {\n  return [{\n    json: {\n      reply: data.mensaje || 'No encontré combinaciones compatibles con los filtros indicados.',\n      recommendations: []\n    }\n  }];\n}\n\nconst esProductoUnico = builds.every((b) => (b.items || []).length === 1);\nconst resumen = builds.map((b, i) => {\n  const total = Number(Number(b.total || 0).toFixed(2));\n  const prefijo = esProductoUnico ? 'Producto ' : 'Opción ';\n  return prefijo + (i + 1) + ': ' + b.etiqueta + ' por $' + total;\n}).join('; ');\n\nconst presupuestoTexto = config.presupuesto_sugerido\n  ? ' usando un presupuesto sugerido de $' + config.presupuesto_sugerido + ' para esta necesidad'\n  : '';\n\nconst tipoResultado = esProductoUnico ? ' productos recomendados' : ' configuraciones compatibles';\n\nreturn [{\n  json: {\n    reply: 'Encontré ' + builds.length + tipoResultado + presupuestoTexto + ': ' + resumen + '. Puedes revisar las tarjetas y elegir la opción que prefieras.',\n    recommendations: builds.map((b) => ({\n      label: b.etiqueta,\n      total: Number(Number(b.total || 0).toFixed(2)),\n      products: (b.items || []).map((p) => ({\n        id_producto: p.id_producto,\n        categoria: p.categoria,\n        nombre: p.nombre,\n        marca: p.marca,\n        precio: Number(Number(p.precio || 0).toFixed(2))\n      }))\n    }))\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        208
+      ],
+      "id": "25dad188-63e9-4bbd-b3c3-80ba58c1a3cf",
+      "name": "Respuesta_Final"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un clasificador de intenciones para una tienda de componentes de computadoras. Analiza el mensaje y responde ÚNICAMENTE con un JSON válido, sin texto adicional, sin markdown.\n\nMensaje del cliente: \"{{ $('Code in JavaScript3').first().json.mensaje_limpio }}\"\n\nResponde con este formato exacto:\n{\"intent\": \"product_search\", \"confidence\": 0.95}\n\nLos valores posibles de intent son:\n- product_search: el cliente busca productos o quiere armar algo\n- greeting: el cliente saluda o hace pregunta general\n- clarification: el cliente pide aclaración sobre algo previo\n\nJSON:",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -2384,
+        576
+      ],
+      "id": "3ea59216-b6b6-406d-83b2-189d29cdca1e",
+      "name": "Basic LLM Chain2"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -2384,
+        736
+      ],
+      "id": "ba841621-f1b1-47a8-b6d9-731b4d310f26",
+      "name": "Ollama Chat Model3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un extractor de información para una tienda de componentes de PC. Las categorías disponibles son exactamente estas: Placa madre, Procesador, Memoria RAM, Tarjeta grafica, Fuente de poder, Almacenamiento, Gabinete, Monitor, Periferico.\n\nMensaje del cliente: \"{{ $('Code in JavaScript3').first().json.mensaje_limpio }}\"\nPresupuesto detectado: {{ $('Code in JavaScript3').first().json.presupuesto ?? 'ninguno' }}\n\nExtrae la información y responde ÚNICAMENTE con un JSON válido, sin texto adicional, sin markdown, sin bloques de código:\n{\n  \"categorias_necesarias\": [\"Procesador\", \"Placa madre\", \"Memoria RAM\", \"Tarjeta grafica\", \"Fuente de poder\", \"Almacenamiento\", \"Gabinete\"],\n  \"query_semantica\": \"PC gaming de alto rendimiento con tarjeta gráfica potente\",\n  \"presupuesto_confirmado\": null,\n  \"tipo_uso\": \"gaming\",\n  \"prioridad\": \"rendimiento\"\n}\n\nJSON:",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1936,
+        544
+      ],
+      "id": "7a39922d-f33b-4c6d-b997-f77cff0b7c6a",
+      "name": "Basic LLM Chain3"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -1936,
+        736
+      ],
+      "id": "5ddfa94c-33a5-4dc0-a40d-b0bf103abd79",
+      "name": "Ollama Chat Model4"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente de ventas amigable de una tienda de componentes de PC.\n\nEl cliente pidió: \"{{ $('Code in JavaScript3').first().json.mensaje_limpio }}\"\n\nSe encontraron estas 3 opciones de builds completamente compatibles:\n\nOpción 1 - {{ $('Code in JavaScript6').first().json.builds[0].etiqueta }}: ${{ $('Code in JavaScript6').first().json.builds[0].total.toFixed(2) }}\nOpción 2 - {{ $('Code in JavaScript6').first().json.builds[1].etiqueta }}: ${{ $('Code in JavaScript6').first().json.builds[1].total.toFixed(2) }}\nOpción 3 - {{ $('Code in JavaScript6').first().json.builds[2].etiqueta }}: ${{ $('Code in JavaScript6').first().json.builds[2].total.toFixed(2) }}\n\nEscribe una respuesta amigable presentando las 3 opciones al cliente. Para cada una menciona el precio total y una ventaja clave. No inventes especificaciones. Máximo 150 palabras.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1072,
+        400
+      ],
+      "id": "e08eb2e9-ce16-4771-a696-ef75b5956b7c",
+      "name": "Basic LLM Chain4"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        576
+      ],
+      "id": "06b611dd-028e-492b-a1dc-e2fd10b1e8c0",
+      "name": "Ollama Chat Model5"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {
+          "keepAlive": "24h"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -2224,
+        -288
+      ],
+      "id": "07cde3cf-c582-422b-8788-611b6d0486b9",
+      "name": "Ollama Chat Model6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Eres un clasificador automático. Lee el mensaje del usuario y clasifica su intención en UNA sola de estas 4 palabras:\n\nSALUDO (si dice hola, buenos días, o hace charla trivial).\n\nBUSQUEDA (si pide armar una PC, buscar gráficas, o da un presupuesto).\n\nSELECCION (si dice \"quiero la primera opción\", \"me gusta la dos\", \"agrega la 3\").\n\nRECHAZO (si dice \"no me gusta ninguna\", \"están muy caras\").\nNO escribas puntos, NO escribas explicaciones, SOLO escribe la palabra en mayúsculas.",
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -2224,
+        -480
+      ],
+      "id": "2ef53c38-d16f-44b4-88cb-2abc0e74b869",
+      "name": "Basic LLM Chain5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=on la expresión ={{ $json.text }} (esto toma la palabra que dijo el LLM).\n\nReglas (Rules): Crea 4 reglas dando clic en \"Add Routing Rule\".\n\nRegla 0: String - Contains - SALUDO (Redirige a la salida 0).\n\nRegla 1: String - Contains - BUSQUEDA (Redirige a la salida 1).\n\nRegla 2: String - Contains - SELECCION (Redirige a la salida 2).\n\nRegla 3: String - Contains - RECHAZO (Redirige a la salida 3).",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1920,
+        -480
+      ],
+      "id": "7b3e6ed8-9d8d-4d92-b2af-276eb2b310f1",
+      "name": "Basic LLM Chain6"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -1920,
+        -304
+      ],
+      "id": "0c5bd871-fcde-4592-87c3-4efd63d75f7b",
+      "name": "Ollama Chat Model7"
+    },
+    {
+      "parameters": {
+        "mode": "expression"
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1584,
+        -480
+      ],
+      "id": "e1a95f17-9ea7-48b2-8d45-638ecb6b0fed",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres YA!CHAT. Usa estos datos de inventario: {{ $json.datos_db }}. El usuario quiere esto: {{ $('Webhook').item.json.body.mensaje }}. Recomienda 3 opciones distintas y compatibles. Al final de tu mensaje, incluye OBLIGATORIAMENTE este JSON exacto: [{\"id\": 1, \"nombre\": \"PC 1\", \"precio\": 100}, {\"id\": 2, \"nombre\": \"PC 2\", \"precio\": 200}, {\"id\": 3, \"nombre\": \"PC 3\", \"precio\": 300}]. Usa los IDs reales de la base de datos.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1440,
+        -736
+      ],
+      "id": "0f94142c-d356-4ed9-ba9f-9ca988cf84e1",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1376,
+        -288
+      ],
+      "id": "b354a986-a816-4510-a0eb-102e1f19e529",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const textoLLM = $('Basic LLM Chain').item.json.text; \nconst regexJSON = /\\[\\s*\\{[\\s\\S]*\\}\\s*\\]/;\nconst match = textoLLM.match(regexJSON);\n\nlet opcionesJSON = [];\nlet textoLimpio = textoLLM;\n\nif (match) {\n    try {\n        opcionesJSON = JSON.parse(match[0]);\n        textoLimpio = textoLLM.replace(regexJSON, '').trim(); \n    } catch (error) {}\n}\n\nreturn {\n    respuesta_al_chat: textoLimpio, \n    carrito_invisible: opcionesJSON     \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        -736
+      ],
+      "id": "97a96cf8-1e7b-47f4-92f1-b244177db84a",
+      "name": "Code in JavaScript7"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "El usuario acaba de seleccionar una opción de la lista anterior (ej: \"la primera\", \"la 2\"). Dime SOLO el número de la opción que eligió (1, 2 o 3). No escribas palabras, solo el dígito.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1376,
+        -480
+      ],
+      "id": "a3716f87-e01b-4efd-a64c-493d43665fe4",
+      "name": "Basic LLM Chain7"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const respuestaLLM = $('Basic LLM Chain (Extractor)').item.json.text;\nconst idLimpio = respuestaLLM.replace(/[^0-9]/g, '');\n\nreturn {\nrespuesta_al_chat: \"¡Excelente elección! Procesando la opción \" + idLimpio + \" para el carrito.\"\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        -480
+      ],
+      "id": "63782585-ca96-4bfd-93fe-5d5f54494b11",
+      "name": "Code in JavaScript8"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -1360,
+        -592
+      ],
+      "id": "1d20fc70-44ee-4cb1-b1e7-c19f1f06dfe5",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1376,
+        -128
+      ],
+      "id": "2d438f91-24bf-46fe-a164-fc8eccc575b8",
+      "name": "Basic LLM Chain8"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1136,
+        -736
+      ],
+      "id": "8cfb4ee6-90af-47c8-a2b8-b88d128aef89",
+      "name": "Execute a SQL query2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = .json; // Captura el JSON de entrada\nconst resultadoPlano = [];\n\ninput.opciones.forEach(opcion => {\n  opcion.productos.forEach(producto => {\n    // Saltamos el objeto final que solo dice \"categoria\": \"total\"\n    if (producto.categoria === 'total') return;\n\n    resultadoPlano.push({\n      session_id: input.session_id,\n      respuesta_texto: input.respuesta_texto,\n      configuracion_tipo: opcion.etiqueta,\n      configuracion_total: parseFloat(opcion.total),\n      producto_categoria: producto.categoria,\n      producto_nombre: producto.nombre,\n      producto_marca: producto.marca,\n      producto_precio: parseFloat(producto.precio)\n    });\n  });\n});\n\nreturn resultadoPlano;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        192
+      ],
+      "id": "72051cd3-f228-4d70-9195-92a86df44339",
+      "name": "Code in JavaScript9"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "reply-greeting-web",
+              "name": "reply",
+              "value": "¡Hola! Soy el asistente de la tienda. Puedo ayudarte a encontrar componentes de PC. ¿Qué estás buscando o qué quieres armar?",
+              "type": "string"
+            },
+            {
+              "id": "recommendations-greeting-web",
+              "name": "recommendations",
+              "value": "={{ [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1792,
+        80
+      ],
+      "id": "564cdab3-8c06-46a8-90db-5480b71fdcf5",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "reply-fallback-web",
+              "name": "reply",
+              "value": "No encontré productos compatibles con lo que describes. ¿Puedes darme más detalles o ajustar el presupuesto?",
+              "type": "string"
+            },
+            {
+              "id": "recommendations-fallback-web",
+              "name": "recommendations",
+              "value": "={{ [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1040,
+        80
+      ],
+      "id": "f933be14-fd18-4d55-b409-a0c3fe851dc0",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yachat",
+        "responseMode": "lastNode",
+        "options": {},
+        "responseData": "firstEntryJson"
+      },
+      "id": "webhook-yachat-web",
+      "name": "Webhook Web",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2768,
+        352
+      ],
+      "webhookId": "yachat-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-yachat-web",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -560,
+        208
+      ]
+    }
+  ],
+  "connections": {
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query in Postgres": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        []
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        []
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "Respuesta_Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain4": {
+      "main": [
+        [
+          {
+            "node": "Respuesta_Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model6": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain5",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain5": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model7": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain6",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain6": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain7",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain8",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        []
+      ]
+    },
+    "Basic LLM Chain7": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Web": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {}
+}
