@@ -1,5 +1,8 @@
 # YACHAT_IA — Agente de Ventas Autónomo para PYME (Consumer Electronics)
 
+> Guia actualizada para el equipo: ver `GUIA_WINDOWS_WEBHOOK_N8N.md`.
+> Esa guia explica la instalacion completa en Windows, el webhook de n8n, la pagina web, Redis, Ollama, ChromaDB y las pruebas end-to-end.
+
 Este repositorio contiene la arquitectura de software e infraestructura para **YACHAT_IA**, un agente inteligente diseñado para operar de forma local (*On-Premise*) en entornos de PYMEs comerciales de electrónica de consumo en Ecuador. El sistema combina comprensión semántica avanzada y control transaccional estricto mediante una arquitectura híbrida de datos.
 
 ---

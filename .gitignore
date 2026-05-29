@@ -2,15 +2,24 @@
 env/
 venv/
 
+# Dependencias generadas
+node_modules/
+techcore-ec-1/node_modules/
+
 # Bases de Datos Locales
 *.db
 *.sqlite3
 chroma_data/
+.n8n/
 
 # Variables de entorno y secretos
 .env
+*.env
 
 # Archivos cacheados
 .DS_Store
 __pycache__/
 *.pyc
+
+# Logs locales
+*.log

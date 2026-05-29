@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TechCore EC — Componentes de PC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <span class="logo-mark">⬡</span>
+        <span class="logo-text">TECH<span class="logo-accent">CORE</span></span>
+        <span class="logo-sub">EC</span>
+      </a>
+
+      <nav class="nav" id="nav">
+        <a href="#" class="nav-link active" data-filter="all">Todo</a>
+        <a href="#" class="nav-link" data-filter="Procesador">CPU</a>
+        <a href="#" class="nav-link" data-filter="Placa madre">Placa Madre</a>
+        <a href="#" class="nav-link" data-filter="Memoria RAM">RAM</a>
+        <a href="#" class="nav-link" data-filter="Tarjeta grafica">GPU</a>
+        <a href="#" class="nav-link" data-filter="Almacenamiento">Storage</a>
+        <a href="#" class="nav-link" data-filter="Fuente de poder">PSU</a>
+        <a href="#" class="nav-link" data-filter="Gabinete">Gabinete</a>
+        <a href="#" class="nav-link" data-filter="Monitor">Monitor</a>
+        <a href="#" class="nav-link" data-filter="Periferico">Periféricos</a>
+      </nav>
+
+      <div class="header-actions">
+        <div class="search-wrap">
+          <input type="text" id="searchInput" class="search-input" placeholder="Buscar componente...">
+          <span class="search-icon">⌕</span>
+        </div>
+        <button class="cart-btn" id="cartBtn">
+          <span class="cart-icon">◫</span>
+          <span class="cart-badge" id="cartBadge">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-grid"></div>
+      <div class="hero-glow"></div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-tag">🇪🇨 Quito, Ecuador · Envío nacional</div>
+      <h1 class="hero-title">
+        Arma tu PC<br>
+        <span class="hero-accent">sin complicaciones</span>
+      </h1>
+      <p class="hero-sub">Componentes compatibles, garantizados y con soporte técnico real.<br>Procesadores, GPUs, RAM, almacenamiento y más.</p>
+      <div class="hero-ctas">
+        <button class="btn-primary" onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
+          Ver catálogo
+        </button>
+        <button class="btn-ghost" onclick="openAgentWidget()">
+          🤖 Armar mi PC con IA
+        </button>
+      </div>
+    </div>
+    <div class="hero-spec-strip">
+      <span>AMD · Intel · NVIDIA</span>
+      <span class="strip-dot">·</span>
+      <span>Garantía 12–60 meses</span>
+      <span class="strip-dot">·</span>
+      <span>Pago en efectivo, transferencia o tarjeta</span>
+      <span class="strip-dot">·</span>
+      <span>Asesoría técnica gratuita</span>
+    </div>
+  </section>
+
+  <!-- FILTROS / PRECIO -->
+  <section class="filter-bar">
+    <div class="filter-bar-inner">
+      <div class="price-filter">
+        <label>Precio máx: <strong id="priceLabel">$1500</strong></label>
+        <input type="range" id="priceRange" min="0" max="1500" value="1500" step="10">
+      </div>
+      <div class="sort-wrap">
+        <select id="sortSelect" class="sort-select">
+          <option value="default">Ordenar: Por defecto</option>
+          <option value="price-asc">Precio: menor a mayor</option>
+          <option value="price-desc">Precio: mayor a menor</option>
+          <option value="name-asc">Nombre: A–Z</option>
+        </select>
+      </div>
+      <div class="results-count">
+        <span id="resultsCount">— productos</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATÁLOGO -->
+  <main class="catalog-section" id="catalog">
+    <div class="catalog-grid" id="catalogGrid">
+      <!-- productos cargados dinámicamente -->
+    </div>
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <div class="empty-icon">◻</div>
+      <p>No se encontraron productos con estos filtros.</p>
+    </div>
+    <div class="loading-state" id="loadingState">
+      <div class="loader"></div>
+      <p>Cargando componentes…</p>
+    </div>
+  </main>
+
+  <!-- SECCIÓN CONFIANZA -->
+  <section class="trust-section">
+    <div class="trust-inner">
+      <div class="trust-item">
+        <span class="trust-icon">⚡</span>
+        <strong>Entrega rápida</strong>
+        <p>Mismo día en Quito para pedidos antes de las 14h00</p>
+      </div>
+      <div class="trust-item">
+        <span class="trust-icon">🔧</span>
+        <strong>Soporte técnico</strong>
+        <p>Asesoría en armado y compatibilidad sin costo</p>
+      </div>
+      <div class="trust-item">
+        <span class="trust-icon">🛡️</span>
+        <strong>Garantía oficial</strong>
+        <p>12 a 60 meses según el componente, con respaldo local</p>
+      </div>
+      <div class="trust-item">
+        <span class="trust-icon">📦</span>
+        <strong>Stock real</strong>
+        <p>Todo lo que ves está disponible. Sin preventa ni esperas</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="logo-mark">⬡</span>
+        <span class="logo-text">TECH<span class="logo-accent">CORE</span> <span class="logo-sub">EC</span></span>
+        <p>Quito, Ecuador · Av. Naciones Unidas y Shyris</p>
+        <p>info@techcore.ec · +593 99 000 0000</p>
+      </div>
+      <div class="footer-links">
+        <h4>Categorías</h4>
+        <a href="#">Procesadores</a>
+        <a href="#">Placas Madre</a>
+        <a href="#">Memorias RAM</a>
+        <a href="#">Tarjetas Gráficas</a>
+        <a href="#">Almacenamiento</a>
+      </div>
+      <div class="footer-links">
+        <h4>Información</h4>
+        <a href="#">Garantía y devoluciones</a>
+        <a href="#">Métodos de pago</a>
+        <a href="#">Envíos</a>
+        <a href="#">Contacto</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 TechCore EC. Todos los derechos reservados.</span>
+    </div>
+  </footer>
+
+  <!-- SIDEBAR CARRITO -->
+  <div class="cart-overlay" id="cartOverlay"></div>
+  <aside class="cart-sidebar" id="cartSidebar">
+    <div class="cart-header">
+      <h3>Tu carrito</h3>
+      <button class="cart-close" id="cartClose">✕</button>
+    </div>
+    <div class="cart-items" id="cartItems">
+      <p class="cart-empty">Tu carrito está vacío.</p>
+    </div>
+    <div class="cart-footer" id="cartFooter" style="display:none;">
+      <div class="cart-total">
+        <span>Total</span>
+        <strong id="cartTotal">$0.00</strong>
+      </div>
+      <button class="btn-primary cart-checkout-btn">Proceder al pago →</button>
+      <button class="btn-ghost cart-clear-btn" id="cartClearBtn">Vaciar carrito</button>
+    </div>
+  </aside>
+
+  <!-- MODAL PRODUCTO -->
+  <div class="modal-overlay" id="modalOverlay"></div>
+  <div class="product-modal" id="productModal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+
+  <!-- El widget del agente se carga aparte (simulando la instalación en una PYME) -->
+  <script src="/js/main.js"></script>
+  <script src="/widget/agent-widget.js" data-store-api="http://localhost:3000" data-agent-api="http://localhost:3000/api/agent"></script>
+</body>
+</html>
